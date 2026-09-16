@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validador Master - Pedagogia (Clean)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary: #0f52ba; --primary-dark: #082567; --success: #137333; --warning: #b06000; --danger: #c5221f; --bg: #f8f9fa; --border: #dadce0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #202124; }
+        .container { max-width: 1500px; margin: 0 auto; }
+        header { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; font-size: 20px; color: var(--primary-dark); }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-success { background: var(--success); }
+        input[type="file"] { display: none; }
+        
+        details { background: #e8f0fe; padding: 15px; border-radius: 8px; border: 1px solid #aecbfa; margin-bottom: 20px; }
+        summary { font-weight: bold; cursor: pointer; color: var(--primary-dark); font-size: 15px; outline: none; }
+        .config-section { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid var(--border); margin-top: 10px; }
+        .config-section h3 { margin: 0 0 10px 0; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: var(--primary-dark); }
+        .grid-config { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+        .input-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #555; }
+        .input-group textarea { width: 100%; height: 50px; font-size: 11px; font-family: monospace; resize: vertical; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }
+        
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+        th { background: #f1f3f4; font-size: 12px; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; display: inline-block; margin-bottom: 4px; }
+        .badge-ok { background: #e6f4ea; color: var(--success); }
+        .badge-nok { background: #fce8e6; color: var(--danger); }
+        .badge-pesquisa { background: #fef7e0; color: var(--warning); }
+        .badge-mantido { background: #e8f0fe; color: #1a73e8; }
+        .table-wrap { max-height: 600px; overflow-y: auto; }
+        .stats { display: flex; gap: 15px; margin-bottom: 15px; }
+        .stat-box { flex: 1; background: #fff; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .log-box { font-size: 10px; color: #c5221f; margin-top: 4px; max-width: 300px; word-break: break-word; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Validador Master - Pedagogia</h1>
+            <p style="margin:5px 0 0 0; font-size:12px; color:#555;">Análise de Campo (VAL_07) manual e Supervisor (VAL_09_4) automatizada.</p>
+        </div>
+        <label for="fileInput" class="btn">📂 Carregar Planilha</label>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+    </header>
+
+    <details open>
+        <summary>⚙️ Painel de Regras (VAL_07) - Preencha os termos para análise</summary>
+        
+        <div class="config-section">
+            <h3>🌐 Regras Globais (Aplicadas a tudo)</h3>
+            <div class="grid-config">
+                <div class="input-group">
+                    <label>Vedados (Recusa imediata):</label>
+                    <textarea id="cfg_vedados"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Órgãos (Prefeitura/Secretaria sem escola):</label>
+                    <textarea id="cfg_orgaos"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Termos Privados (Vai pra pesquisa se faltar nível):</label>
+                    <textarea id="cfg_privados"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Termos que anulam Recusa de Órgãos:</label>
+                    <textarea id="cfg_escolas_base"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>👶 Estágio Educação Infantil (Obrigatório I)</h3>
+            <div class="grid-config">
+                <div class="input-group">
+                    <label>Gatilhos da Disciplina (NÃO APAGAR):</label>
+                    <textarea id="cfg_inf_gatilho">INFANTIL, OBRIGATORIO I</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Termos Válidos (Aprova):</label>
+                    <textarea id="cfg_inf_valido"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Bloqueios (Geram conflito):</label>
+                    <textarea id="cfg_inf_bloqueio"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Salva-Vidas (Anula bloqueio):</label>
+                    <textarea id="cfg_inf_salva"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>🎒 Estágio Ensino Fundamental / Anos Iniciais (Obrigatório II)</h3>
+            <div class="grid-config">
+                <div class="input-group">
+                    <label>Gatilhos da Disciplina (NÃO APAGAR):</label>
+                    <textarea id="cfg_fund_gatilho">FUNDAMENTAL, ANOS INICIAIS, OBRIGATORIO II, 3 AO 5</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Termos Válidos (Aprova):</label>
+                    <textarea id="cfg_fund_valido"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Bloqueios (Geram conflito):</label>
+                    <textarea id="cfg_fund_bloqueio"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Salva-Vidas (Anula bloqueio):</label>
+                    <textarea id="cfg_fund_salva"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>🏢 Estágio de Gestão / Obrigatório III</h3>
+            <div class="grid-config">
+                <div class="input-group">
+                    <label>Gatilhos da Disciplina (NÃO APAGAR):</label>
+                    <textarea id="cfg_gest_gatilho">GESTAO, EDUCACIONAL, OBRIGATORIO III, NAO ESCOLARES</textarea>
+                </div>
+                <div class="input-group" style="grid-column: span 3;">
+                    <label>Termos Válidos (Se tiver qualquer um, APROVA):</label>
+                    <textarea id="cfg_gest_valido"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>🔎 Observação (Contexto e Território)</h3>
+            <div class="grid-config">
+                <div class="input-group">
+                    <label>Gatilhos CONTEXTO (NÃO APAGAR):</label>
+                    <textarea id="cfg_obs1_gatilho">CONTEXTO ESCOLAR, DIAGNOSTICO</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Bloqueios CONTEXTO:</label>
+                    <textarea id="cfg_obs1_bloqueio"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Gatilhos TERRITORIO (NÃO APAGAR):</label>
+                    <textarea id="cfg_obs2_gatilho">TERRITORIO, EDUCAR E DO APRENDER</textarea>
+                </div>
+                <div class="input-group">
+                    <label>Bloqueios TERRITORIO:</label>
+                    <textarea id="cfg_obs2_bloqueio"></textarea>
+                </div>
+                <div class="input-group" style="grid-column: span 4;">
+                    <label>Salva-Vidas (Para ambos):</label>
+                    <textarea id="cfg_obs_salva"></textarea>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    <div id="dashboard" class="card" style="display: none;">
+        <div class="stats">
+            <div class="stat-box" style="border-color:#1a73e8;"><b id="stTot">0</b> Pedagogia Lidos</div>
+            <div class="stat-box" style="border-color:#137333;"><b id="stOk">0</b> Totalmente Aprovados</div>
+            <div class="stat-box" style="border-color:#c5221f;"><b id="stErr">0</b> Com Pendências</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+            <h3 style="margin:0;">Visualização Dupla</h3>
+            <button class="btn btn-success" onclick="baixarPlanilha()">📥 Baixar Planilha Master</button>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th style="width: 15%;">ALUNO</th>
+                    <th style="width: 15%;">DISCIPLINA</th>
+                    <th style="width: 20%;">EMPRESA</th>
+                    <th style="width: 20%;">RESULTADO VAL_07</th>
+                    <th style="width: 15%;">SUPERVISOR/FORM.</th>
+                    <th style="width: 15%;">RESULTADO VAL_09_4</th>
+                </tr></thead>
+                <tbody id="corpoTabela"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+let dadosProcessados = [];
+let sheetNameGlobal = '';
+
+// Mensagens VAL_07
+const MSG_GENERICA = "[CAMPO DE ESTÁGIO] Por gentileza aluno(a), solicite ao Polo que realize novo cadastro pois no nome da empresa é necessário constar o nome do Local onde irá realizar o estágio: Ex: Prefeitura/Escola.";
+const MSG_CONFLITO = "[CAMPO DE ESTÁGIO] Por gentileza aluno(a), é necessário que entre em contato com seu Polo de apoio presencial, identificamos que o campo de estágio no qual foi vinculado para cumprimento do estágio obrigatório, não atende as atividades determinadas pela coordenação/conselho do curso.";
+
+// Mensagens VAL_09_4
+const MSG_PEDAGOGIA_GERAL = "[SUPERVISOR CAMPO] Por gentileza aluno(a), é necessário que realize a edição quanto ao Supervisor de Campo, considerando que para o curso, o(a) Supervisor(a) de Campo deve ser licenciado em Pedagogia.";
+const MSG_GESTAO = "[SUPERVISOR CAMPO] Por gentileza aluno(a), é necessário que realize a edição quanto ao Supervisor de Campo, considerando que para o curso, o (a) Supervisor (a) de Campo possua graduação em LICENCIATURA que esteja exercendo a função de direção.";
+
+function normalizar(texto) {
+    if (!texto) return "";
+    let txt = texto.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*I[\s\.]*E[\s\.]*F\b/g, " EMEIEF ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*I[\s\.]*F\b/g, " EMEIF ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*F[\s\.]*I\b/g, " EMEFI ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*F[\s\.]*E[\s\.]*I\b/g, " EMEFEI ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*F\b/g, " EMEF ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*I\b/g, " EMEI ");
+    txt = txt.replace(/\bE[\s\.]*M[\s\.]*E[\s\.]*B\b/g, " EMEB ");
+    txt = txt.replace(/\bC[\s\.]*M[\s\.]*E[\s\.]*I\b/g, " CMEI ");
+    txt = txt.replace(/\bC[\s\.]*E[\s\.]*I[\s\.]*M\b/g, " CEIM ");
+    txt = txt.replace(/\bU[\s\.]*M[\s\.]*E[\s\.]*I\b/g, " UMEI ");
+    txt = txt.replace(/\bC[\s\.]*E[\s\.]*I\b/g, " CEI ");
+    txt = txt.replace(/\bE[\s\.]*E[\s\.]*B[\s\.]*M\b/g, " EEBM ");
+    txt = txt.replace(/\bE[\s\.]*E[\s\.]*B\b/g, " EEB ");
+    txt = txt.replace(/\bE[\s\.]*B[\s\.]*M\b/g, " EBM ");
+    txt = txt.replace(/\bE[\s\.]*E[\s\.]*F\b/g, " EEF ");
+    txt = txt.replace(/\bE[\s\.]*M\b/g, " ESCOLA MUNICIPAL ");
+    txt = txt.replace(/\bE[\s\.]*E\b/g, " ESCOLA ESTADUAL ");
+    
+    return txt.replace(/\s+/g, ' ').trim();
+}
+
+function checar(texto, idLista) {
+    let raw = document.getElementById(idLista).value;
+    if (!raw || !raw.trim()) return false;
+    let termos = raw.split(',').map(t => normalizar(t.trim())).filter(t => t);
+    if (termos.length === 0) return false;
+    return termos.some(termo => new RegExp("\\b" + termo + "\\b").test(texto));
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type: 'array'});
+        sheetNameGlobal = wb.SheetNames[0];
+        const json = XLSX.utils.sheet_to_json(wb.Sheets[sheetNameGlobal], {defval: ""});
+        processar(json);
+    };
+    reader.readAsArrayBuffer(file);
+});
+
+function processar(dados) {
+    let totPedagogia = 0, totAprovados = 0, totPendencia = 0, html = '';
+    
+    dadosProcessados = dados.map((row) => {
+        let novaRow = {...row};
+        
+        let kCurso = Object.keys(row).find(k => normalizar(k) === 'CURSO') || 'CURSO';
+        let kDisc = Object.keys(row).find(k => normalizar(k).includes('DISCIPLINA')) || 'DISCIPLINA_ALUNO';
+        let kEmp = Object.keys(row).find(k => normalizar(k).includes('EMPRESA') || normalizar(k).includes('RAZAO')) || 'RAZAO_SOCIAL';
+        let kVal07 = Object.keys(row).find(k => normalizar(k) === 'VAL_07') || 'VAL_07';
+        let kVal09 = Object.keys(row).find(k => normalizar(k) === 'VAL_09_4') || 'VAL_09_4';
+        let kNomeSup = Object.keys(row).find(k => normalizar(k).includes('NOME_SUP_CAMPO')) || 'NOME_SUP_CAMPO';
+        let kFormSup = Object.keys(row).find(k => normalizar(k).includes('FORMACAO_SUP_CAMPO')) || 'FORMACAO_SUP_CAMPO';
+        
+        let curso = normalizar(row[kCurso]);
+        let isPedagogia = curso.includes('PEDAGOGIA') && !curso.includes('PSICOPEDAGOGIA') && !curso.includes('2 LICENCIATURA') && !curso.includes('SEGUNDA LICENCIATURA');
+        
+        if(!isPedagogia) return novaRow;
+        totPedagogia++;
+        
+        let disc = normalizar(row[kDisc]);
+        
+        // ==========================================
+        // 1. LÓGICA VAL_07 (RAZÃO SOCIAL)
+        // ==========================================
+        let emp = normalizar(row[kEmp]);
+        let val07Atual = String(row[kVal07] || '').trim().toUpperCase();
+        let res07 = "OK", badge07 = '<span class="badge badge-ok">OK</span>', txtLog07 = "";
+
+        if (val07Atual === 'VALIDO' || val07Atual === 'VÁLIDO') {
+            res07 = row[kVal07];
+            badge07 = '<span class="badge badge-mantido">MANTIDO</span>';
+        } else {
+            let ehApae = checar(emp, 'cfg_vedados');
+            let orgaoPublico = checar(emp, 'cfg_orgaos');
+            let anulaOrgao = checar(emp, 'cfg_escolas_base');
+            let ehPrivado = checar(emp, 'cfg_privados');
+
+            if (!emp || emp.length < 5) {
+                res07 = "[A PESQUISAR / ANALISE MANUAL]"; badge07 = '<span class="badge badge-pesquisa">A PESQUISAR</span>';
+            } else if (ehApae) {
+                res07 = MSG_CONFLITO; badge07 = '<span class="badge badge-nok">VEDADO</span>'; txtLog07 = res07;
+            } else if (orgaoPublico && !anulaOrgao) {
+                res07 = MSG_GENERICA; badge07 = '<span class="badge badge-nok">GENÉRICO</span>'; txtLog07 = res07;
+            } else if (checar(disc, 'cfg_gest_gatilho')) {
+                if (!checar(emp, 'cfg_gest_valido') && !anulaOrgao) {
+                    res07 = "[A PESQUISAR / ANALISE MANUAL]"; badge07 = '<span class="badge badge-pesquisa">A PESQUISAR</span>';
+                }
+            } else {
+                let cfg = null;
+                if (checar(disc, 'cfg_inf_gatilho')) cfg = 'inf';
+                else if (checar(disc, 'cfg_fund_gatilho')) cfg = 'fund';
+                else if (checar(disc, 'cfg_obs1_gatilho')) cfg = 'obs1';
+                else if (checar(disc, 'cfg_obs2_gatilho')) cfg = 'obs2';
+
+                if (cfg) {
+                    let bloqueou = checar(emp, `cfg_${cfg}_bloqueio`);
+                    let salvou = cfg.includes('obs') ? checar(emp, 'cfg_obs_salva') : checar(emp, `cfg_${cfg}_salva`);
+                    let validou = cfg.includes('obs') ? true : checar(emp, `cfg_${cfg}_valido`); 
+                    
+                    if (bloqueou && !salvou) {
+                        res07 = MSG_CONFLITO; badge07 = '<span class="badge badge-nok">CONFLITO NÍVEL</span>'; txtLog07 = res07;
+                    } else if (!validou && !salvou && !cfg.includes('obs')) {
+                        if (ehPrivado || !anulaOrgao) {
+                            res07 = "[A PESQUISAR / ANALISE MANUAL]"; badge07 = '<span class="badge badge-pesquisa">A PESQUISAR</span>';
+                        }
+                    }
+                } else {
+                    res07 = "[A PESQUISAR / ANALISE MANUAL]"; badge07 = '<span class="badge badge-pesquisa">A PESQUISAR</span>';
+                }
+            }
+        }
+        novaRow[kVal07] = res07;
+
+        // ==========================================
+        // 2. LÓGICA VAL_09_4 (FORMAÇÃO DO SUPERVISOR)
+        // ==========================================
+        let formSup = normalizar(row[kFormSup]);
+        let nomeSup = row[kNomeSup] || '';
+        let val09Atual = String(row[kVal09] || '').trim().toUpperCase();
+        let res09 = "OK", badge09 = '<span class="badge badge-ok">OK</span>', txtLog09 = "";
+
+        if (val09Atual === 'VALIDO' || val09Atual === 'VÁLIDO') {
+            res09 = row[kVal09];
+            badge09 = '<span class="badge badge-mantido">MANTIDO</span>';
+        } else {
+            let formSemPsico = formSup.replace(/PSICOPEDAGOGIA/g, '').replace(/PSICO PEDAGOGIA/g, '');
+            let temPedagogiaExplicita = /\b(PEDAGOGIA|PEDAGOGO|PEDAGOGA|PEDAGOGOS|PEDAGOGAS)\b/.test(formSemPsico) || /\bMAGISTERIO\b/.test(formSup) || /\bNORMAL SUPERIOR\b/.test(formSup);
+            let ehBacharelExclusivo = (/\b(BACHAREL|BACHARELADO)\b/.test(formSup)) && !/\b(LICENCIATURA|LICENCIADO|LICENCIADA|PLENA|PLENO)\b/.test(formSup);
+            let ehFormacaoPedagogicaExclusiva = /\bFORMACAO PEDAGOGICA\b/.test(formSup) && !temPedagogiaExplicita;
+
+            let temPos = /\b(POS|P[OÓ]S|MESTRADO|DOUTORADO|ESPECIALIZACAO|MBA)\b/.test(formSup);
+            let temGradLic = /\b(GRADUACAO|GRADUADA|GRADUADO|LICENCIATURA|LICENCIADO|LICENCIADA|PLENA|PLENO|SUPERIOR)\b/.test(formSup);
+            let ehPosSemGrad = temPos && !temGradLic;
+
+            let ehGestao = disc.includes('GESTAO') || disc.includes('EDUCACIONAL') || disc.includes('DIRECAO');
+
+            if (ehFormacaoPedagogicaExclusiva) {
+                res09 = MSG_PEDAGOGIA_GERAL; badge09 = '<span class="badge badge-nok">FORM. PEDAGÓGICA INVÁLIDA</span>'; txtLog09 = res09;
+            } else if (ehPosSemGrad) {
+                res09 = MSG_PEDAGOGIA_GERAL; badge09 = '<span class="badge badge-nok">PÓS/MESTRADO SEM GRADUAÇÃO</span>'; txtLog09 = res09;
+            } else if (ehGestao) {
+                let temQualquerLicenciatura = /\b(LICENCIATURA|LICENCIADO|LICENCIADA|HISTORIA|LETRAS|MATEMATICA|GEOGRAFIA|CIENCIAS|BIOLOGIA|FISICA|QUIMICA|FILOSOFIA|SOCIOLOGIA)\b/.test(formSup);
+                if (!temQualquerLicenciatura && !temPedagogiaExplicita) {
+                    res09 = MSG_GESTAO; badge09 = '<span class="badge badge-nok">FALTA LICENCIATURA/PEDAGOGIA</span>'; txtLog09 = res09;
+                } else if (ehBacharelExclusivo && !temPedagogiaExplicita) {
+                    res09 = MSG_GESTAO; badge09 = '<span class="badge badge-nok">BACHARELADO INVÁLIDO</span>'; txtLog09 = res09;
+                }
+            } else {
+                if (!temPedagogiaExplicita) {
+                    res09 = MSG_PEDAGOGIA_GERAL; badge09 = '<span class="badge badge-nok">FALTA PEDAGOGIA</span>'; txtLog09 = res09;
+                } else if (ehBacharelExclusivo) {
+                    res09 = MSG_PEDAGOGIA_GERAL; badge09 = '<span class="badge badge-nok">BACHAREL EM PEDAGOGIA INVÁLIDO</span>'; txtLog09 = res09;
+                }
+            }
+        }
+        novaRow[kVal09] = res09;
+
+        if (res07 === "OK" && res09 === "OK") totAprovados++; else totPendencia++;
+        
+        let display07 = res07 !== "OK" && res07 !== "VALIDO" && res07 !== "VÁLIDO" ? badge07 + `<div class="log-box">${txtLog07}</div>` : badge07;
+        let display09 = res09 !== "OK" && res09 !== "VALIDO" && res09 !== "VÁLIDO" ? badge09 + `<div class="log-box">${txtLog09}</div>` : badge09;
+
+        html += `<tr>
+            <td><strong>${row[Object.keys(row)[0]] || 'N/D'}</strong></td>
+            <td>${row[kDisc] || ''}</td>
+            <td>${row[kEmp] || ''}</td>
+            <td>${display07}</td>
+            <td>${nomeSup} <br> <i style="color:#555;">${row[kFormSup] || ''}</i></td>
+            <td>${display09}</td>
+        </tr>`;
+        
+        return novaRow;
+    });
+
+    document.getElementById('stTot').innerText = totPedagogia;
+    document.getElementById('stOk').innerText = totAprovados;
+    document.getElementById('stErr').innerText = totPendencia;
+    document.getElementById('corpoTabela').innerHTML = html;
+    document.getElementById('dashboard').style.display = 'block';
+}
+
+function baixarPlanilha() {
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dadosProcessados), sheetNameGlobal || 'Planilha');
+    XLSX.writeFile(wb, "Planilha_Master_Pedagogia_Atualizada.xlsx");
+}
+</script>
+</body>
+</html>
